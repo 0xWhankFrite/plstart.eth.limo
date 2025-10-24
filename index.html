@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>plstart.me</title>
+	<link rel="icon" href="https://github.com/0xWhankFrite/0xWhankFrite/blob/main/pulsechainify%20(7)-modified.png?raw=true" type="image/x-icon">
     <style>
         body {
             font-family: 'MS Sans Serif', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -68,13 +69,23 @@
             z-index: 1; /* Default z-index */
             overflow: hidden; /* Default overflow hidden for collapsed state */
             max-height: none; /* Remove default max-height; handle in JS */
+            cursor: move; /* Show move cursor to indicate draggability */
         }
 
         .category-section.expanded {
             z-index: 10; /* Higher z-index when expanded to float above others */
             overflow: visible; /* Ensure content is not clipped when expanded */
             position: absolute; /* Float over content */
-            background-color: rgba(224, 224, 224, 0.95); /* Slightly more opaque when expanded */
+            background-color: rgba(224, 224, 224, 1); /* Fully opaque when expanded */
+            opacity: 1; /* Remove transparency when expanded */
+        }
+        
+        .category-section.expanded .website-link {
+            opacity: 1; /* Make links fully opaque when section is expanded */
+        }
+        
+        .category-section.expanded .show-more-btn {
+            opacity: 1; /* Make button fully opaque when section is expanded */
         }
 
         .category-section.collapsed {
@@ -194,6 +205,11 @@
             padding: 0 5px;
             border-top: 1px solid #0077cc;
             box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.15);
+            position: fixed; /* Fixed to bottom of viewport */
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 999; /* Below start menu but above content */
         }
 
         #start-button {
@@ -209,6 +225,7 @@
             transition: background-color 0.1s ease, color 0.1s ease;
             color: #000000;
             text-shadow: none;
+            white-space: nowrap;
         }
 
         #start-button:hover {
@@ -228,19 +245,70 @@
             background-color: rgba(0, 0, 0, 0.2); /* Slight background for readability */
             border-radius: 3px;
             text-shadow: 1px 1px #000000;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        /* Responsive styles for mobile */
+        @media (max-width: 768px) {
+            #taskbar {
+                height: 40px; /* Taller for touch */
+                padding: 0 10px;
+            }
+            
+            #start-button {
+                font-size: 0.8em;
+                padding: 6px 12px;
+            }
+            
+            #datetime-display {
+                font-size: 0.7em;
+                padding: 4px 8px;
+            }
+            
+            #start-menu {
+                width: 90vw; /* Take most of screen width on mobile */
+                max-width: 300px;
+                left: 5px;
+                bottom: 45px;
+            }
+            
+            .start-menu-content {
+                grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+                gap: 8px;
+            }
+            
+            body {
+                padding-bottom: 45px; /* Add padding to prevent content hiding under fixed taskbar */
+            }
+        }
+        
+        @media (max-width: 480px) {
+            #datetime-display {
+                font-size: 0.6em;
+                padding: 3px 6px;
+            }
+            
+            #start-button {
+                font-size: 0.7em;
+                padding: 5px 10px;
+                margin-right: 3px;
+            }
         }
 
         #start-menu {
             display: none; /* Hidden by default */
-            position: absolute;
-            bottom: 30px; /* Positioned above the taskbar */
-            left: 0;
+            position: fixed; /* Changed to fixed for better positioning */
+            bottom: 35px; /* Positioned above the taskbar */
+            left: 5px;
             width: 250px;
             background-color: #f0f0f0; /* Even lighter grey for XP */
             border: 1px solid #808080;
             border-radius: 5px;
             box-shadow: 0 3px 7px rgba(0, 0, 0, 0.25);
             padding: 5px;
+            z-index: 1000; /* High z-index to float above everything */
         }
 
         #start-menu.show {
@@ -404,7 +472,92 @@
                         }
                     });
                 }
+                
+                // Make sections draggable
+                makeDraggable(section);
             });
+            
+            // Draggable functionality
+            function makeDraggable(element) {
+                let isDragging = false;
+                let startX, startY, initialLeft, initialTop;
+                const header = element.querySelector('h2');
+                
+                if (!header) return;
+                
+                header.style.cursor = 'move';
+                
+                header.addEventListener('mousedown', startDrag);
+                header.addEventListener('touchstart', startDrag, { passive: false });
+                
+                function startDrag(e) {
+                    // Don't drag if clicking on close button
+                    if (e.target.classList.contains('close-button')) return;
+                    
+                    isDragging = true;
+                    element.style.cursor = 'grabbing';
+                    header.style.cursor = 'grabbing';
+                    
+                    // Get initial mouse/touch position
+                    const clientX = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX;
+                    const clientY = e.type === 'touchstart' ? e.touches[0].clientY : e.clientY;
+                    
+                    startX = clientX;
+                    startY = clientY;
+                    
+                    // Get current position
+                    const rect = element.getBoundingClientRect();
+                    const container = element.parentElement;
+                    const containerRect = container.getBoundingClientRect();
+                    
+                    // If not already absolutely positioned, convert it
+                    if (element.style.position !== 'absolute') {
+                        const relativeLeft = rect.left - containerRect.left + container.scrollLeft;
+                        const relativeTop = rect.top - containerRect.top + container.scrollTop;
+                        
+                        element.style.position = 'absolute';
+                        element.style.left = relativeLeft + 'px';
+                        element.style.top = relativeTop + 'px';
+                        element.style.width = rect.width + 'px';
+                        element.style.margin = '0';
+                        element.style.zIndex = '100';
+                    }
+                    
+                    initialLeft = parseInt(element.style.left) || 0;
+                    initialTop = parseInt(element.style.top) || 0;
+                    
+                    e.preventDefault();
+                }
+                
+                document.addEventListener('mousemove', drag);
+                document.addEventListener('touchmove', drag, { passive: false });
+                
+                function drag(e) {
+                    if (!isDragging) return;
+                    
+                    const clientX = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX;
+                    const clientY = e.type === 'touchmove' ? e.touches[0].clientY : e.clientY;
+                    
+                    const deltaX = clientX - startX;
+                    const deltaY = clientY - startY;
+                    
+                    element.style.left = (initialLeft + deltaX) + 'px';
+                    element.style.top = (initialTop + deltaY) + 'px';
+                    
+                    e.preventDefault();
+                }
+                
+                document.addEventListener('mouseup', stopDrag);
+                document.addEventListener('touchend', stopDrag);
+                
+                function stopDrag() {
+                    if (isDragging) {
+                        isDragging = false;
+                        element.style.cursor = 'move';
+                        header.style.cursor = 'move';
+                    }
+                }
+            }
 
         });
     </script>
